@@ -387,8 +387,12 @@
 
     function toggleSubtask(subtaskId) {
       fetch(`/subtask/${subtaskId}/toggle/`, {
-      method: 'POST'
-      })
+        method: 'POST',
+        headers: {'X-CSRFToken': getCSRFToken()}
+      }).then(() => {
+        const checklistId = document.getElementById('parentChecklistId').value;
+        openSubtasksModal(checklistId);
+      });
       };
 
     function getCSRFToken() {

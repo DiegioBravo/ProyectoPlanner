@@ -296,11 +296,17 @@
           headers: {'X-CSRFToken': '{{ csrf_token }}'}
         }).then(() => {
           const li = checkbox.closest('li');
-          const target = checkbox.checked
-            ? document.querySelector('#doneTab ul')
-            : document.querySelector('#pendingTab ul');
-
-          target.prepend(li);
+          if (checkbox.checked) {
+            let targetUl = document.querySelector('#doneTab ul');
+            if (!targetUl) {
+              document.getElementById('doneTab').innerHTML = '<ul class="list-group"></ul>';
+              targetUl = document.querySelector('#doneTab ul');
+            }
+            targetUl.prepend(li);
+          } else {
+            const targetUl = document.querySelector('#pendingTab ul');
+            if (targetUl) targetUl.prepend(li);
+          }
         });
       }
 
