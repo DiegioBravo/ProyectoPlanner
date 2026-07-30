@@ -259,6 +259,7 @@ def add_checklist_item(request):
             'text': item.text,
             'day': day.isoformat(),
             'day_label': label,
+            'user': item.user.username.lower(),
         })
 
 

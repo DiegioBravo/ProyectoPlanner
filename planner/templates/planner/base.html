@@ -343,12 +343,13 @@
           const ul = dayGroup.querySelector('ul');
 
           const li = document.createElement('li');
-          li.className = 'list-group-item d-flex justify-content-between align-items-center';
+          li.className = 'list-group-item d-flex justify-content-between align-items-center checklist-item';
           li.dataset.id = data.id;
+          li.dataset.user = data.user;
           li.innerHTML = `
             <div class="d-flex align-items-start gap-2">
               <input type="checkbox" onchange="toggleItem(${data.id}, this)">
-              <span>${data.text}</span>
+              <span class="checklist-text">${data.text}</span>
             </div>
             <button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${data.id})">
               🗑
@@ -386,33 +387,16 @@
 ///////////////////// FIN SCRIPT PARA BUSCADOR DE TAREAS ///////////////////////////////////
 
 ///////////////////// INICIO SCRIPT PARA SPINNER DE USUARIOS ///////////////////////////////////
-    document
-    .getElementById('userChecklistFilter')
-    .addEventListener('change', function () {
-
-        const usuario = this.value;
-
-        const items =
-            document.querySelectorAll('.checklist-item');
-
-        items.forEach(item => {
-
-            const itemUser =
-                item.dataset.user;
-
-            if (
-                usuario === 'todos' ||
-                usuario === itemUser
-            ) {
-
-                item.style.display = '';
-
-            } else {
-
-                item.style.display = 'none';
-            }
+    const userFilter = document.getElementById('userChecklistFilter');
+    if (userFilter) {
+        userFilter.addEventListener('change', function () {
+            const usuario = this.value;
+            document.querySelectorAll('.checklist-item').forEach(item => {
+                const itemUser = item.dataset.user;
+                item.style.display = (usuario === 'todos' || usuario === itemUser) ? '' : 'none';
+            });
         });
-    });
+    }
 ///////////////////// FINAL SCRIPT PARA SPINNER DE USUARIOS ///////////////////////////////////
   </script>
 </body>

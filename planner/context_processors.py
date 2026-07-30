@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from .models import ChecklistItem
 from collections import defaultdict
 from django.utils.timezone import localdate
@@ -17,8 +18,11 @@ def checklist_context(request):
         day = localdate(i.created_at)
         (done if i.completed else pending)[day].append(i)
 
+    User = get_user_model()
+
     return {
         'pending_grouped': dict(pending),
         'done_grouped': dict(done),
+        'usuarios': User.objects.all().order_by('username'),
     }
 
