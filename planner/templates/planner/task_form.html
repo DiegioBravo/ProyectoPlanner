@@ -1,0 +1,16 @@
+{% extends 'planner/base.html' %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    {% if task %}Editar tarea{% else %}Agregar tarea{% endif %} — {{ hourslot.label }}
+  </div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn btn-success" type="submit">Guardar</button>
+      <a class="btn btn-secondary" href="{% url 'planner:day_view' hourslot.day.date %}">Cancelar</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

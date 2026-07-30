@@ -1,0 +1,249 @@
+{% extends 'planner/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3 align-items-center">
+  <h4>Plan: {{ day.date|date:"l d \\d\\e F \\d\\e Y" }}</h4>
+  <div>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'planner:today' %}">Abrir hoy</a>
+  </div>
+</div>
+
+<table class="table table-bordered bg-white">
+  <thead class="table-light">
+    <tr>
+      <th width="140">Hora</th>
+      <th>Tareas</th>
+      <th width="120">Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for h in hours %}
+    <tr>
+      <td class="hourslot-cell align-middle">{{ h.label }}</td>
+      <td>
+        {% for t in h.tasks.all %}
+          <div class="card task-card mb-2">
+            <div class="card-body p-2 d-flex flex-column">
+
+              <!-- INFO PRINCIPAL -->
+              <div class="d-flex justify-content-between">
+                <div>
+                  <strong>{{ t.title }}</strong>
+                  <div class="small text-muted">
+                    {{ t.description|linebreaksbr }}
+                  </div>
+                </div>
+
+                <div class="text-end">
+                  <small class="text-muted">{{ t.created_at|date:"H:i" }}</small><br>
+                  {% if t.duration_minutes %}
+                    <span class="badge bg-secondary">{{ t.duration_minutes }}m</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- ESTADO ADJUNTOS -->
+              <div class="mt-1 small text-muted">
+                {% if t.attachments.exists %}
+                  📎 {{ t.attachments.count }} adjunto(s)
+                {% else %}
+                  Sin adjuntos
+                {% endif %}
+              </div>
+
+              <!-- BOTONES ABAJO DERECHA -->
+              <div class="mt-auto d-flex justify-content-end gap-2 pt-2">
+
+                <!-- EDITAR -->
+                <a href="{% url 'planner:edit_task' t.id %}"
+                  class="btn btn-sm btn-outline-secondary"
+                  title="Editar">
+                  <i class="bi bi-pencil">Editar</i>
+                </a>
+
+                <!-- BORRAR -->
+                <form method="post"
+                      action="{% url 'planner:delete_task' t.id %}">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger"
+                          title="Borrar"
+                          onclick="return confirm('¿Eliminar tarea?');">
+                    <i class="bi bi-trash">Borrar</i>
+                  </button>
+                </form>
+
+                <!-- ADJUNTAR -->
+                <button class="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#attachModal{{ t.id }}"
+                        title="Adjuntar archivo">
+                  <i class="bi bi-paperclip">Adjuntar</i>
+                </button>
+
+                <!-- VER ADJUNTOS -->
+                {% if t.attachments.exists %}
+                <button class="btn btn-sm btn-outline-info"
+                        data-bs-toggle="modal"
+                        data-bs-target="#attachmentsModal{{ t.id }}"
+                        title="Ver adjuntos">
+                  <i class="bi bi-eye">Ver</i>
+                </button>
+                {% endif %}
+
+              </div>
+            </div>
+          </div>
+
+          </div>
+
+                <div class="modal fade" id="attachModal{{ t.id }}" tabindex="-1">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+
+                      <form method="post"
+                            action="{% url 'planner:add_attachment' t.id %}"
+                            enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="modal-header">
+                          <h5 class="modal-title">Adjuntar archivo</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        {% comment %} <div class="modal-body">
+                          <input type="file" name="file" class="form-control" required>
+                        </div> {% endcomment %}
+
+                        <div class="modal-body">
+                          <div class="mb-2 text-muted small">
+                            Puedes seleccionar un archivo o pegar un pantallazo (Ctrl + V)
+                          </div>
+
+                          <input type="file"
+                                name="file"
+                                id="fileInput{{ t.id }}"
+                                class="form-control"
+                                accept="image/*">
+
+                          <!-- Preview -->
+                          <img id="preview{{ t.id }}"
+                              class="img-fluid mt-2 d-none rounded border"/>
+                        </div>
+
+                        <div class="modal-footer">
+                          <button type="submit" class="btn btn-primary">Subir</button>
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Cancelar
+                          </button>
+                        </div>
+
+                      </form>
+
+                    </div>
+                  </div>
+                </div>
+
+                <div class="modal fade" id="attachmentsModal{{ t.id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content">
+
+                      <div class="modal-header">
+                        <h5 class="modal-title">
+                          Adjuntos – {{ t.title }}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+
+                      <div class="modal-body">
+
+                        {% if t.attachments.exists %}
+                          <ul class="list-group">
+                            {% for att in t.attachments.all %}
+                              <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>📎 {{ att.filename }}</span>
+
+                                <div class="d-flex gap-2">
+                                  <a href="{{ att.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    Abrir
+                                  </a>
+
+                                  <form method="post" action="{% url 'planner:delete_attachment' att.id %}">
+                                    {% csrf_token %}
+                                    <button
+                                      type="submit"
+                                      class="btn btn-sm btn-outline-danger"
+                                      onclick="return confirm('¿Eliminar este archivo?');">
+                                      🗑
+                                    </button>
+                                  </form>
+                                </div>
+                              </li>
+
+                            {% endfor %}
+                          </ul>
+                        {% else %}
+                          <p class="text-muted mb-0">Esta tarea no tiene adjuntos.</p>
+                        {% endif %}
+
+                      </div>
+
+                      <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">
+                          Cerrar
+                        </button>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+
+          
+        {% empty %}
+          <div class="text-muted">— sin tareas —</div>
+        {% endfor %}
+      </td>
+      <td class="align-middle">
+        <a class="btn btn-primary btn-sm" href="{% url 'planner:add_task' h.id %}">Agregar</a>
+      </td>
+    </tr>
+    {% endfor %}
+
+    <script>
+      document.addEventListener('paste', function (event) {
+          const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+
+          for (const item of items) {
+              if (item.type.indexOf("image") !== -1) {
+
+                  const blob = item.getAsFile();
+                  const file = new File(
+                      [blob],
+                      `pantallazo_${Date.now()}.jpg`,
+                      { type: "image/jpeg" }
+                  );
+
+                  // Busca el input file del modal abierto
+                  const modal = document.querySelector('.modal.show');
+                  if (!modal) return;
+
+                  const input = modal.querySelector('input[type="file"]');
+                  const preview = modal.querySelector('img');
+
+                  if (input) {
+                      const dataTransfer = new DataTransfer();
+                      dataTransfer.items.add(file);
+                      input.files = dataTransfer.files;
+
+                      if (preview) {
+                          preview.src = URL.createObjectURL(file);
+                          preview.classList.remove('d-none');
+                      }
+                  }
+              }
+          }
+      });
+      </script>
+
+  </tbody>
+</table>
+{% endblock %}

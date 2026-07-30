@@ -1,0 +1,530 @@
+<style>
+  .urgencia-1 { background-color: #dc3545; color: #fff; }
+  .urgencia-2 { background-color: #fd7e14; color: #fff; }
+  .urgencia-3 { background-color: #198754; color: #fff; }
+  .urgencia-4 { background-color: #0d6efd; color: #fff; }
+  .urgencia-5 { background-color: #e7e9ec; color: #000000; }
+
+  .urgencia-select {
+    font-weight: 600;
+    width: 155px;
+    flex-shrink: 0;
+  }
+
+  /* Mantiene el formato de saltos de línea y usa fuente monoespaciada */
+  .subtask-text-container {
+      white-space: pre-wrap; 
+      word-break: break-word;
+      ffont-family: Inter, system-ui, sans-serif;
+      font-size: 0.9rem;
+      background: #f8f9fa;
+      padding: 5px;
+      border-radius: 4px;
+      max-height: 100px;
+      overflow: hidden;
+      display: block;
+      cursor: pointer;
+  }
+
+  /* Modal más ancho para ver SQL */
+  .modal-xl-custom {
+      max-width: 90% !important;
+  }
+
+  .subtask-text {
+
+    width: 100%;
+
+    text-align: left;
+
+    font-size: 16px;
+
+    line-height: 1.5;
+
+    color: #212529;
+
+    cursor: pointer;
+
+    word-break: break-word;
+}
+
+.subtask-text:hover {
+
+    color: #0d6efd;
+}
+
+#subtasksList .list-group-item {
+
+    padding-top: 14px;
+
+    padding-bottom: 14px;
+}
+.sql-input {
+
+    font-family: Consolas, monospace;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+
+    min-height: 180px;
+
+    white-space: pre;
+
+    tab-size: 4;
+
+    resize: vertical;
+}
+</style>
+{% comment %} MODAL PARA SUBTAREAS {% endcomment %}
+  <div class="modal fade" id="subtasksModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+
+
+      <div class="modal-header">
+      <h5 class="modal-title">Subtareas</h5>
+      <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+
+      <div class="modal-body">
+      <ul class="list-group" id="subtasksList"></ul>
+
+
+      <form id="addSubtaskForm" class="mt-3">
+          {% csrf_token %}
+          <input type="hidden" id="parentChecklistId">
+          <textarea
+              class="form-control sql-input"
+              name="text"
+              rows="8"
+              placeholder="Escribe tu subtarea o pega aquí tu SQL..."
+              required
+          ></textarea>
+          <div class="d-flex justify-content-end mt-3">
+              <button
+                  type="submit"
+                  class="btn btn-primary">
+                  Guardar subtarea
+              </button>
+          </div>
+      </form>
+      </div>
+
+
+      </div>
+    </div>
+  </div>
+  {% comment %} MODAL PARA SUBTAREAS {% endcomment %}
+
+  {% comment %} MODAL PARA VISUALIZACION SQL {% endcomment %}
+  <div class="modal fade" id="viewFullSqlModal" tabindex="-1" style="z-index: 1060;">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title">Detalle de Consulta</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="fullSqlContent" class="p-3 bg-light border" style="white-space: pre-wrap; font-size: 0.9rem;"></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-primary" onclick="copyToClipboard()">Copiar SQL</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% comment %} MODAL PARA VISUALIZACION SQL {% endcomment %}
+
+<li class="list-group-item d-flex align-items-start gap-3 checklist-item"
+    data-id="{{ i.id }}"
+    data-user="{{ i.user.username|lower }}">
+
+  <!-- Checkbox -->
+  <div class="pt-1">
+    <input type="checkbox"
+           {% if i.completed %}checked{% endif %}
+           onchange="toggleItem({{ i.id }}, this)">
+  </div>
+
+  <!-- Texto -->
+  <div class="flex-grow-1 text-wrap checklist-text">
+    {{ i.text }}
+  </div>
+
+  <div class="d-flex flex-column align-items-center">
+        <small
+            class="badge mb-1 user-badge"
+            data-user-id="{{ i.user.id }}">
+            👤 {{ i.user.username }}
+        </small>
+        <button
+            class="btn btn-sm btn-outline-secondary"
+            onclick="openSubtasksModal({{ i.id }})">
+            🧩 Subtareas
+        </button>
+    </div>
+
+  <select class="form-select form-select-sm urgencia-select ms-2"
+        data-id="{{ i.id }}">
+    <option value="1" {% if i.urgencia == 1 %}selected{% endif %}>🔥 Muy Urgente</option>
+    <option value="2" {% if i.urgencia == 2 %}selected{% endif %}>⚠️ Urgente</option>
+    <option value="3" {% if i.urgencia == 3 %}selected{% endif %}>🟢 Normal</option>
+    <option value="4" {% if i.urgencia == 4 %}selected{% endif %}>🔵 Baja</option>
+    <option value="5" {% if i.urgencia == 5 %}selected{% endif %}>ℹ️ Informativo</option>
+  </select>
+
+  <!-- Botón eliminar -->
+  <button class="btn btn-sm btn-outline-danger flex-shrink-0"
+          onclick="deleteItem({{ i.id }})">
+    <i class="bi bi-trash"></i>
+  </button>
+
+</li>
+{% comment %} MODAL PARA VISUALIZACION DE LAS SUBTAREAS {% endcomment %}
+<div class="modal fade" id="sqlViewerModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    SQL Completo
+                </h5>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal">
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-end mb-3">
+                    <button
+                        class="btn btn-success"
+                        onclick="copySQL()">
+                        📋 Copiar SQL
+                    </button>
+                </div>
+                <textarea
+                    id="fullSQLText"
+                    class="form-control"
+                    rows="25"
+                    readonly
+                    style="
+                        font-family: Consolas, monospace;
+                        white-space: pre;
+                    "
+                ></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+{% comment %} MODAL PARA VISUALIZACION DE LAS SUBTAREAS {% endcomment %}
+
+{% comment %} MODAL PARA EDITAR LAS SUBTAREAS {% endcomment %}
+<div class="modal fade" id="editSubtaskModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    Editar SQL
+                </h5>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal">
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editSubtaskId">
+                <textarea
+                    id="editSubtaskText"
+                    class="form-control sql-input"
+                    rows="20"
+                ></textarea>
+            </div>
+            <div class="modal-footer">
+                <button
+                    class="btn btn-primary"
+                    onclick="saveSubtaskEdit()">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% comment %} MODAL PARA EDITAR LAS SUBTAREAS {% endcomment %}
+
+<script>
+  document.querySelectorAll('.urgencia-select').forEach(select => {
+
+    function aplicarColor() {
+      select.className =
+        'form-select form-select-sm urgencia-select urgencia-' + select.value;
+    }
+
+    aplicarColor();
+
+    select.addEventListener('change', function () {
+      aplicarColor();
+
+      fetch(`/checklist/${this.dataset.id}/urgencia/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ urgencia: this.value })
+      });
+    });
+  });
+
+  ///////////////////// INICIO SCRIPT PARA SUBTAREAS ///////////////////////////////////
+
+    function openSubtasksModal(checklistId) {
+      fetch(`/checklist/${checklistId}/subtasks/`)
+        .then(r => r.json())
+        .then(data => {
+          const ul = document.getElementById('subtasksList');
+          ul.innerHTML = '';
+          document.getElementById('parentChecklistId').value = checklistId;
+
+          data.forEach(s => {
+
+            const escapedText = s.text
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\n/g, '\\n')
+                .replace(/\r/g, '');
+
+            ul.innerHTML += `
+              <li class="list-group-item d-flex justify-content-between align-items-start">
+
+                  <div class="d-flex align-items-start gap-2 flex-grow-1">
+
+                      <input type="checkbox"
+                          class="mt-1"
+                          ${s.completed ? 'checked' : ''}
+                          onchange="toggleSubtask(${s.id})">
+
+                      <div class="flex-grow-1">
+
+                          <div class="subtask-text"
+                              onclick="expandSql('${escapedText}')">
+
+                              ${s.text.substring(0, 200)}
+                              ${s.text.length > 200 ? '...' : ''}
+
+                          </div>
+
+                          <button
+                              class="btn btn-sm btn-outline-primary mt-2"
+                              onclick="expandSql('${escapedText}')">
+
+                              <i class="bi bi-arrows-fullscreen"></i>
+                              Ver / Copiar
+
+                          </button>
+
+                          <button
+                              class="btn btn-sm btn-outline-warning mt-2 ms-1"
+                              onclick="openEditModal(${s.id}, '${escapedText}')">
+
+                              ✏️ Editar
+
+                          </button>
+
+                      </div>
+
+                  </div>
+
+                  <button class="btn btn-sm btn-outline-danger ms-2"
+                          onclick="deleteSubtask(${s.id})">
+
+                      🗑️
+
+                  </button>
+
+              </li>
+              `;
+        });
+
+          new bootstrap.Modal(
+            document.getElementById('subtasksModal')
+          ).show();
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('addSubtaskForm');
+          if (!form.dataset.listener) { // 👈 evita duplicados
+          form.dataset.listener = 'true';
+
+
+          form.addEventListener('submit', function (e) {
+          e.preventDefault();
+
+
+          const checklistId =
+          document.getElementById('parentChecklistId').value;
+
+
+          const formData = new FormData(this);
+          formData.append('checklist_id', checklistId);
+
+
+          fetch('/subtask/add/', {
+          method: 'POST',
+          body: formData
+          })
+            .then(() => {
+            this.reset();
+            openSubtasksModal(checklistId);
+            });
+          });
+        }
+      });
+
+    function toggleSubtask(subtaskId) {
+      fetch(`/subtask/${subtaskId}/toggle/`, {
+      method: 'POST'
+      })
+      };
+
+    function getCSRFToken() {
+      return document.querySelector('[name=csrfmiddlewaretoken]').value;
+      }
+
+    function deleteSubtask(subtaskId) {
+      if (!confirm('¿Eliminar esta subtarea?')) return;
+
+
+      fetch(`/subtask/${subtaskId}/delete/`, {
+      method: 'POST',
+      headers: {
+      'X-CSRFToken': getCSRFToken()
+        }
+        })
+        .then(response => {
+        if (!response.ok) {
+        throw new Error('Error al borrar en backend');
+        }
+        const checklistId =
+        document.getElementById('parentChecklistId').value;
+        openSubtasksModal(checklistId);
+        })
+        .catch(err => console.error(err));
+      }
+
+    function expandSql(sqlText) {
+
+        document.getElementById('fullSQLText').value = sqlText;
+
+        new bootstrap.Modal(
+            document.getElementById('sqlViewerModal')
+        ).show();
+    }
+
+    function copySQL() {
+
+        const textarea =
+            document.getElementById('fullSQLText');
+
+        navigator.clipboard.writeText(textarea.value);
+    }
+  //////////////////// FUNCION PARA ABIR MODAL DE EDICION DE SUBTAREAS ///////////////////////////////////
+    function openEditModal(subtaskId, sqlText) {
+
+        document.getElementById('editSubtaskId').value =
+            subtaskId;
+
+        document.getElementById('editSubtaskText').value =
+            sqlText;
+
+        new bootstrap.Modal(
+            document.getElementById('editSubtaskModal')
+        ).show();
+    }
+    function saveSubtaskEdit() {
+
+        const subtaskId =
+            document.getElementById('editSubtaskId').value;
+
+        const text =
+            document.getElementById('editSubtaskText').value;
+
+        const formData = new FormData();
+
+        formData.append('text', text);
+
+        fetch(`/subtask/${subtaskId}/edit/`, {
+
+            method: 'POST',
+
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
+
+            body: formData
+
+        })
+        .then(r => r.json())
+        .then(() => {
+
+            bootstrap.Modal.getInstance(
+                document.getElementById('editSubtaskModal')
+            ).hide();
+
+            const checklistId =
+                document.getElementById('parentChecklistId').value;
+
+            openSubtasksModal(checklistId);
+
+        });
+    }
+  //////////////////// FUNCION PARA ABIR MODAL DE EDICION DE SUBTAREAS ///////////////////////////////////
+  /////////////////// ES PARA COLORES EN LOS ICONOS DE USUSARIO //////////////////////////////////////////
+    document.querySelectorAll('.user-badge').forEach(badge => {
+
+        const userId = parseInt(
+            badge.dataset.userId
+        );
+
+        const hue = (userId * 137) % 360;
+
+        badge.style.backgroundColor =
+            `hsl(${hue}, 70%, 45%)`;
+
+        badge.style.color = 'white';
+    });
+
+    ////////////////////////////// PARA EL SPINNER QUE SELECCIONE LOS USUARIOS ///////////////////////////////////////
+    document
+        .getElementById('userChecklistFilter')
+        .addEventListener('change', function () {
+
+            const usuario = this.value;
+
+            const items =
+                document.querySelectorAll('.checklist-item');
+
+            items.forEach(item => {
+
+                const itemUser =
+                    item.dataset.user;
+
+                if (
+                    usuario === 'todos' ||
+                    usuario === itemUser
+                ) {
+
+                    item.style.display = '';
+
+                } else {
+
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+</script>
