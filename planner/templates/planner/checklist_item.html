@@ -420,6 +420,25 @@
         .catch(err => console.error(err));
       }
 
+    function copyToClipboard() {
+      const text = document.getElementById('fullSqlContent').textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+      function fallbackCopy(str) {
+        const ta = document.createElement('textarea');
+        ta.value = str;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+    }
+
     function expandSql(sqlText) {
 
         document.getElementById('fullSQLText').value = sqlText;
